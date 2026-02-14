@@ -65,12 +65,17 @@ function Grocery() {
       });
       
       if (res.ok) {
+        const newList = await res.json();
+        // Add to state immediately with item_count
+        setGroceryLists([...groceryLists, { ...newList, item_count: 0 }]);
         setShowListModal(false);
         setNewListName('');
-        loadData();
+      } else {
+        alert('Failed to create list. Please try again.');
       }
     } catch (error) {
       console.error('Error creating list:', error);
+      alert('Failed to create list. Please try again.');
     }
   };
 
@@ -78,15 +83,21 @@ function Grocery() {
     if (!confirm('Delete this list? All items in it will also be deleted.')) return;
     
     try {
-      await fetch(`/api/grocery-lists/${listId}`, { method: 'DELETE' });
-      loadData();
-      if (selectedListId === listId) {
-        setSelectedListId(null);
-        setGroceryItems([]);
+      const res = await fetch(`/api/grocery-lists/${listId}`, { method: 'DELETE' });
+      if (res.ok) {
+        // Remove from state immediately
+        setGroceryLists(groceryLists.filter(list => list.id !== listId));
+        if (selectedListId === listId) {
+          setSelectedListId(null);
+          setGroceryItems([]);
+        }
+      } else {
+        const data = await res.json();
+        alert(data.detail || 'Failed to delete list');
       }
     } catch (error) {
       console.error('Error deleting list:', error);
-      alert('Cannot delete auto-generated list');
+      alert('Failed to delete list. Cannot delete auto-generated list.');
     }
   };
 
@@ -108,32 +119,61 @@ function Grocery() {
       });
       
       if (res.ok) {
+        const newItem = await res.json();
+        // Add to state immediately
+        setGroceryItems([...groceryItems, newItem]);
+        // Update list count
+        setGroceryLists(groceryLists.map(list => 
+          list.id === selectedListId 
+            ? { ...list, item_count: (list.item_count || 0) + 1 }
+            : list
+        ));
         setShowItemModal(false);
         setFormData({ item_name: '', quantity: 1 });
-        loadItems(selectedListId);
-        loadData(); // Refresh counts
+      } else {
+        alert('Failed to add item. Please try again.');
       }
     } catch (error) {
       console.error('Error adding item:', error);
+      alert('Failed to add item. Please try again.');
     }
   };
 
   const completeItem = async (id) => {
     try {
-      await fetch(`/api/grocery-items/${id}/complete`, { method: 'PUT' });
-      loadItems(selectedListId);
+      const res = await fetch(`/api/grocery-items/${id}/complete`, { method: 'PUT' });
+      if (res.ok) {
+        // Update status in state immediately
+        setGroceryItems(groceryItems.map(item =>
+          item.id === id ? { ...item, status: 'completed' } : item
+        ));
+      } else {
+        alert('Failed to mark item as complete.');
+      }
     } catch (error) {
       console.error('Error completing item:', error);
+      alert('Failed to mark item as complete.');
     }
   };
 
   const deleteItem = async (id) => {
     try {
-      await fetch(`/api/grocery-items/${id}`, { method: 'DELETE' });
-      loadItems(selectedListId);
-      loadData(); // Refresh counts
+      const res = await fetch(`/api/grocery-items/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        // Remove from state immediately
+        setGroceryItems(groceryItems.filter(item => item.id !== id));
+        // Update list count
+        setGroceryLists(groceryLists.map(list => 
+          list.id === selectedListId 
+            ? { ...list, item_count: Math.max(0, (list.item_count || 0) - 1) }
+            : list
+        ));
+      } else {
+        alert('Failed to delete item.');
+      }
     } catch (error) {
       console.error('Error deleting item:', error);
+      alert('Failed to delete item.');
     }
   };
 
@@ -146,15 +186,30 @@ function Grocery() {
     if (!itemToMove) return;
     
     try {
-      await fetch(`/api/grocery-items/${itemToMove.id}/move?new_list_id=${newListId}`, {
+      const res = await fetch(`/api/grocery-items/${itemToMove.id}/move?new_list_id=${newListId}`, {
         method: 'PUT'
       });
-      setShowMoveModal(false);
-      setItemToMove(null);
-      loadItems(selectedListId);
-      loadData(); // Refresh counts
+      
+      if (res.ok) {
+        // Remove from current list immediately
+        setGroceryItems(groceryItems.filter(item => item.id !== itemToMove.id));
+        // Update counts for both lists
+        setGroceryLists(groceryLists.map(list => {
+          if (list.id === selectedListId) {
+            return { ...list, item_count: Math.max(0, (list.item_count || 0) - 1) };
+          } else if (list.id === newListId) {
+            return { ...list, item_count: (list.item_count || 0) + 1 };
+          }
+          return list;
+        }));
+        setShowMoveModal(false);
+        setItemToMove(null);
+      } else {
+        alert('Failed to move item.');
+      }
     } catch (error) {
       console.error('Error moving item:', error);
+      alert('Failed to move item.');
     }
   };
 

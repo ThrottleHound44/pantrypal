@@ -60,6 +60,10 @@ function Items() {
       });
       
       if (res.ok) {
+        const newItem = await res.json();
+        // Add to state immediately
+        setItems([...items, newItem]);
+        // Reset form and close modal
         setShowModal(false);
         setFormData({
           name: '',
@@ -69,10 +73,12 @@ function Items() {
           expiry_date: '',
           photo_url: ''
         });
-        loadData();
+      } else {
+        alert('Failed to add item. Please try again.');
       }
     } catch (error) {
       console.error('Error creating item:', error);
+      alert('Failed to add item. Please try again.');
     }
   };
 
@@ -80,10 +86,16 @@ function Items() {
     if (!confirm('Are you sure you want to delete this item?')) return;
     
     try {
-      await fetch(`/api/items/${id}`, { method: 'DELETE' });
-      loadData();
+      const res = await fetch(`/api/items/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        // Remove from state immediately
+        setItems(items.filter(item => item.id !== id));
+      } else {
+        alert('Failed to delete item. Please try again.');
+      }
     } catch (error) {
       console.error('Error deleting item:', error);
+      alert('Failed to delete item. Please try again.');
     }
   };
 

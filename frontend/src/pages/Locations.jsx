@@ -36,12 +36,16 @@ function Locations() {
       });
       
       if (res.ok) {
+        const newLocation = await res.json();
+        // Add to state immediately
+        setLocations([...locations, newLocation]);
+        // Reset form and close modal
         setShowModal(false);
         setFormData({ name: '', location_type: 'shelf' });
-        loadLocations();
       }
     } catch (error) {
       console.error('Error creating location:', error);
+      alert('Failed to create location. Please try again.');
     }
   };
 
@@ -49,10 +53,16 @@ function Locations() {
     if (!confirm('Are you sure you want to delete this location?')) return;
     
     try {
-      await fetch(`/api/locations/${id}`, { method: 'DELETE' });
-      loadLocations();
+      const res = await fetch(`/api/locations/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        // Remove from state immediately
+        setLocations(locations.filter(loc => loc.id !== id));
+      } else {
+        alert('Failed to delete location. Please try again.');
+      }
     } catch (error) {
       console.error('Error deleting location:', error);
+      alert('Failed to delete location. Please try again.');
     }
   };
 
