@@ -88,15 +88,28 @@ class Notification(BaseModel):
 async def get_locations():
     locations = []
     async for loc in db.locations.find({"family_id": "default-family"}):
-        loc['_id'] = str(loc['_id'])
-        locations.append(loc)
+        clean_loc = {
+            "id": loc.get("id"),
+            "name": loc.get("name"),
+            "location_type": loc.get("location_type"),
+            "family_id": loc.get("family_id"),
+            "created_at": loc.get("created_at")
+        }
+        locations.append(clean_loc)
     return locations
 
 @app.post("/api/locations")
 async def create_location(location: Location):
     location_dict = location.dict()
     await db.locations.insert_one(location_dict)
-    return location_dict
+    # Return clean dict
+    return {
+        "id": location_dict.get("id"),
+        "name": location_dict.get("name"),
+        "location_type": location_dict.get("location_type"),
+        "family_id": location_dict.get("family_id"),
+        "created_at": location_dict.get("created_at")
+    }
 
 @app.delete("/api/locations/{location_id}")
 async def delete_location(location_id: str):
@@ -110,8 +123,19 @@ async def delete_location(location_id: str):
 async def get_items():
     items = []
     async for item in db.items.find({"family_id": "default-family"}):
-        item['_id'] = str(item['_id'])
-        items.append(item)
+        clean_item = {
+            "id": item.get("id"),
+            "name": item.get("name"),
+            "location_id": item.get("location_id"),
+            "quantity": item.get("quantity"),
+            "stock_level": item.get("stock_level"),
+            "expiry_date": item.get("expiry_date"),
+            "photo_url": item.get("photo_url"),
+            "family_id": item.get("family_id"),
+            "added_by": item.get("added_by"),
+            "added_date": item.get("added_date")
+        }
+        items.append(clean_item)
     return items
 
 @app.post("/api/items")
@@ -134,7 +158,19 @@ async def create_item(item: Item):
         )
         await db.grocery_items.insert_one(grocery_item.dict())
     
-    return item_dict
+    # Return clean dict
+    return {
+        "id": item_dict.get("id"),
+        "name": item_dict.get("name"),
+        "location_id": item_dict.get("location_id"),
+        "quantity": item_dict.get("quantity"),
+        "stock_level": item_dict.get("stock_level"),
+        "expiry_date": item_dict.get("expiry_date"),
+        "photo_url": item_dict.get("photo_url"),
+        "family_id": item_dict.get("family_id"),
+        "added_by": item_dict.get("added_by"),
+        "added_date": item_dict.get("added_date")
+    }
 
 @app.delete("/api/items/{item_id}")
 async def delete_item(item_id: str):
@@ -146,19 +182,42 @@ async def delete_item(item_id: str):
 # Grocery Lists
 @app.get("/api/grocery-lists")
 async def get_grocery_lists():
-    lists = []
-    async for glist in db.grocery_lists.find({"family_id": "default-family"}):
-        glist['_id'] = str(glist['_id'])
-        item_count = await db.grocery_items.count_documents({"list_id": glist['id']})
-        glist['item_count'] = item_count
-        lists.append(glist)
-    return lists
+    try:
+        lists = []
+        async for glist in db.grocery_lists.find({"family_id": "default-family"}):
+            # Build clean dict without ObjectId
+            clean_list = {
+                "id": glist.get("id"),
+                "name": glist.get("name"),
+                "family_id": glist.get("family_id"),
+                "created_at": glist.get("created_at"),
+                "is_auto": glist.get("is_auto", False)
+            }
+            # Count items
+            try:
+                item_count = await db.grocery_items.count_documents({"list_id": clean_list['id']})
+                clean_list['item_count'] = item_count
+            except:
+                clean_list['item_count'] = 0
+            lists.append(clean_list)
+        return lists
+    except Exception as e:
+        print(f"Error in get_grocery_lists: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error loading lists: {str(e)}")
 
 @app.post("/api/grocery-lists")
 async def create_grocery_list(glist: GroceryList):
     glist_dict = glist.dict()
     await db.grocery_lists.insert_one(glist_dict)
-    return glist_dict
+    # Return clean dict
+    return {
+        "id": glist_dict.get("id"),
+        "name": glist_dict.get("name"),
+        "family_id": glist_dict.get("family_id"),
+        "created_at": glist_dict.get("created_at"),
+        "is_auto": glist_dict.get("is_auto", False),
+        "item_count": 0
+    }
 
 @app.delete("/api/grocery-lists/{list_id}")
 async def delete_grocery_list(list_id: str):
@@ -182,15 +241,34 @@ async def get_grocery_items(list_id: Optional[str] = None):
     
     items = []
     async for item in db.grocery_items.find(query):
-        item['_id'] = str(item['_id'])
-        items.append(item)
+        clean_item = {
+            "id": item.get("id"),
+            "item_name": item.get("item_name"),
+            "quantity": item.get("quantity"),
+            "list_id": item.get("list_id"),
+            "family_id": item.get("family_id"),
+            "added_by": item.get("added_by"),
+            "status": item.get("status"),
+            "created_at": item.get("created_at")
+        }
+        items.append(clean_item)
     return items
 
 @app.post("/api/grocery-items")
 async def create_grocery_item(item: GroceryItem):
     item_dict = item.dict()
     await db.grocery_items.insert_one(item_dict)
-    return item_dict
+    # Return clean dict
+    return {
+        "id": item_dict.get("id"),
+        "item_name": item_dict.get("item_name"),
+        "quantity": item_dict.get("quantity"),
+        "list_id": item_dict.get("list_id"),
+        "family_id": item_dict.get("family_id"),
+        "added_by": item_dict.get("added_by"),
+        "status": item_dict.get("status"),
+        "created_at": item_dict.get("created_at")
+    }
 
 @app.put("/api/grocery-items/{item_id}/complete")
 async def complete_grocery_item(item_id: str):
