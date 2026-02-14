@@ -75,13 +75,13 @@ function Dashboard() {
     <div>
       <div style={{ marginBottom: '2rem' }}>
         <h1 style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>Dashboard</h1>
-        <p style={{ color: '#718096' }}>Welcome to your smart kitchen management system</p>
+        <p style={{ color: '#6b7280' }}>Welcome to your smart kitchen management system</p>
       </div>
 
       {/* Stats Grid */}
       <div className="grid grid-4" style={{ marginBottom: '2rem' }}>
         <div className="stat-card">
-          <div className="stat-icon" style={{ background: 'rgba(102, 126, 234, 0.1)', color: '#667eea' }}>
+          <div className="stat-icon" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
             <Package />
           </div>
           <div>
@@ -91,7 +91,7 @@ function Dashboard() {
         </div>
 
         <div className="stat-card">
-          <div className="stat-icon" style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
+          <div className="stat-icon" style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}>
             <MapPin />
           </div>
           <div>
@@ -101,7 +101,7 @@ function Dashboard() {
         </div>
 
         <div className="stat-card">
-          <div className="stat-icon" style={{ background: 'rgba(251, 146, 60, 0.1)', color: '#fb923c' }}>
+          <div className="stat-icon" style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
             <AlertTriangle />
           </div>
           <div>

@@ -57,11 +57,11 @@ function Locations() {
   };
 
   const locationTypeColors = {
-    shelf: '#667eea',
+    shelf: '#3b82f6',
     drawer: '#f59e0b',
-    fridge: '#3b82f6',
+    fridge: '#10b981',
     freezer: '#06b6d4',
-    pantry: '#10b981'
+    pantry: '#8b5cf6'
   };
 
   if (loading) {
@@ -74,17 +74,18 @@ function Locations() {
 
   return (
     <div>
-      <div className="flex items-center justify-between" style={{ marginBottom: '2rem' }}>
+      <div className="flex items-center justify-between mobile-stack" style={{ marginBottom: '2rem', gap: '1rem' }}>
         <div>
           <h1 style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>Storage Locations</h1>
-          <p style={{ color: '#718096' }}>Manage your kitchen storage areas</p>
+          <p style={{ color: '#6b7280' }}>Manage your kitchen storage areas</p>
         </div>
         <button 
-          className="btn btn-primary"
+          className="btn btn-primary mobile-full"
           onClick={() => setShowModal(true)}
         >
           <Plus size={20} />
-          Add Location
+          <span className="mobile-hide">Add Location</span>
+          <span className="desktop-hide" style={{ display: 'none' }}>Add</span>
         </button>
       </div>
 

@@ -193,21 +193,21 @@ function Grocery() {
 
   return (
     <div>
-      <div className="flex items-center justify-between" style={{ marginBottom: '2rem' }}>
+      <div className="flex items-center justify-between mobile-stack" style={{ marginBottom: '2rem', gap: '1rem' }}>
         <div>
           <h1 style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>Grocery Lists</h1>
-          <p style={{ color: '#718096' }}>Manage multiple shopping lists</p>
+          <p style={{ color: '#6b7280' }}>Manage multiple shopping lists</p>
         </div>
         <button 
-          className="btn btn-primary"
+          className="btn btn-primary mobile-full"
           onClick={() => setShowListModal(true)}
         >
           <Plus size={20} />
-          New List
+          <span>New List</span>
         </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '1.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
         {/* Lists Sidebar */}
         <div className="card" style={{ height: 'fit-content' }}>
           <h3 style={{ fontSize: '1.125rem', marginBottom: '1rem', fontWeight: 600 }}>

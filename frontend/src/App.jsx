@@ -35,15 +35,16 @@ function App() {
         <nav className="sidebar">
           <div style={{ marginBottom: '2rem' }}>
             <h1 style={{ 
-              fontSize: '1.75rem', 
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              fontSize: '1.5rem', 
+              fontWeight: '700',
+              background: 'linear-gradient(135deg, #10b981 0%, #3b82f6 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               marginBottom: '0.5rem'
             }}>
               🥘 PantryPal
             </h1>
-            <p style={{ color: '#718096', fontSize: '0.9rem' }}>
+            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
               Smart Kitchen Management
             </p>
           </div>
@@ -83,14 +84,15 @@ function App() {
               <div style={{ marginBottom: '2rem' }}>
                 <h2 style={{ 
                   fontSize: '1.5rem', 
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  fontWeight: '700',
+                  background: 'linear-gradient(135deg, #10b981 0%, #3b82f6 100%)',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
                   marginBottom: '0.5rem'
                 }}>
                   🥘 PantryPal
                 </h2>
-                <p style={{ color: '#718096', fontSize: '0.9rem' }}>
+                <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
                   Smart Kitchen Management
                 </p>
               </div>

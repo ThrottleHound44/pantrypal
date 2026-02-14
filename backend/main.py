@@ -95,8 +95,7 @@ async def get_locations():
 @app.post("/api/locations")
 async def create_location(location: Location):
     location_dict = location.dict()
-    result = await db.locations.insert_one(location_dict)
-    location_dict['_id'] = str(result.inserted_id)
+    await db.locations.insert_one(location_dict)
     return location_dict
 
 @app.delete("/api/locations/{location_id}")
@@ -118,17 +117,14 @@ async def get_items():
 @app.post("/api/items")
 async def create_item(item: Item):
     item_dict = item.dict()
-    result = await db.items.insert_one(item_dict)
-    item_dict['_id'] = str(result.inserted_id)
+    await db.items.insert_one(item_dict)
     
     if item.stock_level == "Low":
         auto_list = await db.grocery_lists.find_one({"family_id": "default-family", "is_auto": True})
         if not auto_list:
-            auto_list_obj = GroceryList(name="Low Stock Items (Auto)", is_auto=True)
-            auto_list_dict = auto_list_obj.dict()
-            result = await db.grocery_lists.insert_one(auto_list_dict)
-            auto_list_dict['_id'] = str(result.inserted_id)
-            auto_list = auto_list_dict
+            auto_list = GroceryList(name="Low Stock Items (Auto)", is_auto=True)
+            await db.grocery_lists.insert_one(auto_list.dict())
+            auto_list = auto_list.dict()
         
         grocery_item = GroceryItem(
             item_name=item.name,
@@ -136,8 +132,7 @@ async def create_item(item: Item):
             list_id=auto_list['id'],
             added_by="system"
         )
-        grocery_dict = grocery_item.dict()
-        await db.grocery_items.insert_one(grocery_dict)
+        await db.grocery_items.insert_one(grocery_item.dict())
     
     return item_dict
 
@@ -162,8 +157,7 @@ async def get_grocery_lists():
 @app.post("/api/grocery-lists")
 async def create_grocery_list(glist: GroceryList):
     glist_dict = glist.dict()
-    result = await db.grocery_lists.insert_one(glist_dict)
-    glist_dict['_id'] = str(result.inserted_id)
+    await db.grocery_lists.insert_one(glist_dict)
     return glist_dict
 
 @app.delete("/api/grocery-lists/{list_id}")
@@ -195,10 +189,9 @@ async def get_grocery_items(list_id: Optional[str] = None):
 @app.post("/api/grocery-items")
 async def create_grocery_item(item: GroceryItem):
     item_dict = item.dict()
-    result = await db.grocery_items.insert_one(item_dict)
-    item_dict['_id'] = str(result.inserted_id)
+    await db.grocery_items.insert_one(item_dict)
     return item_dict
-    
+
 @app.put("/api/grocery-items/{item_id}/complete")
 async def complete_grocery_item(item_id: str):
     result = await db.grocery_items.update_one(
@@ -263,8 +256,7 @@ async def get_meal_plans():
 @app.post("/api/meal-plans")
 async def create_meal_plan(plan: MealPlan):
     plan_dict = plan.dict()
-    result = await db.meal_plans.insert_one(plan_dict)
-    plan_dict['_id'] = str(result.inserted_id)
+    await db.meal_plans.insert_one(plan_dict)
     return plan_dict
 
 @app.delete("/api/meal-plans/{plan_id}")
