@@ -13,6 +13,8 @@ function Locations() {
     location_type: 'shelf'
   });
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [loadingItems, setLoadingItems] = useState(false);
 
   useEffect(() => {
     loadLocations();
@@ -31,6 +33,7 @@ function Locations() {
   };
 
   const loadLocationItems = async (locationId) => {
+    setLoadingItems(true);
     try {
       const res = await fetch(`/api/items/location/${locationId}`);
       const data = await res.json();
@@ -38,6 +41,8 @@ function Locations() {
     } catch (error) {
       console.error('Error loading location items:', error);
       setLocationItems([]);
+    } finally {
+      setLoadingItems(false);
     }
   };
 
@@ -58,16 +63,16 @@ function Locations() {
 
   const openItemsModal = async (location) => {
     setSelectedLocation(location);
-    await loadLocationItems(location.id);
     setShowItemsModal(true);
+    await loadLocationItems(location.id);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSaving(true);
     
     try {
       if (editingLocation) {
-        // Update existing location
         const res = await fetch(`/api/locations/${editingLocation.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -85,7 +90,6 @@ function Locations() {
           alert('Failed to update location. Please try again.');
         }
       } else {
-        // Create new location
         const res = await fetch('/api/locations', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -105,6 +109,8 @@ function Locations() {
     } catch (error) {
       console.error('Error saving location:', error);
       alert('Failed to save location. Please try again.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -134,18 +140,19 @@ function Locations() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px', flexDirection: 'column', gap: '1rem' }}>
         <div className="spinner"></div>
+        <p style={{ color: '#6b7280' }}>Loading locations...</p>
       </div>
     );
   }
 
   return (
     <div>
-      <div className="flex items-center justify-between mobile-stack" style={{ marginBottom: '2rem', gap: '1rem' }}>
+      <div className="flex items-center justify-between mobile-stack" style={{ marginBottom: '1.5rem', gap: '1rem' }}>
         <div>
-          <h1 style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>Storage Locations</h1>
-          <p style={{ color: '#6b7280' }}>Manage your kitchen storage areas</p>
+          <h1 style={{ fontSize: 'clamp(1.5rem, 5vw, 2rem)', marginBottom: '0.5rem' }}>Storage Locations</h1>
+          <p style={{ color: '#6b7280', fontSize: 'clamp(0.875rem, 3vw, 1rem)' }}>Manage your kitchen storage areas</p>
         </div>
         <button 
           className="btn btn-primary mobile-full"
@@ -163,7 +170,7 @@ function Locations() {
               <MapPin size={80} />
             </div>
             <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>No locations yet</h3>
-            <p style={{ marginBottom: '1.5rem' }}>
+            <p style={{ marginBottom: '1.5rem', fontSize: '0.875rem' }}>
               Create storage locations to organize your kitchen inventory
             </p>
             <button 
@@ -176,9 +183,9 @@ function Locations() {
           </div>
         </div>
       ) : (
-        <div className="grid grid-3">
+        <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
           {locations.map((location) => (
-            <div key={location.id} className="card">
+            <div key={location.id} className="card" style={{ padding: '1rem' }}>
               <div className="flex items-center justify-between" style={{ marginBottom: '1rem' }}>
                 <div style={{
                   width: '45px',
@@ -188,14 +195,15 @@ function Locations() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: locationTypeColors[location.location_type]
+                  color: locationTypeColors[location.location_type],
+                  flexShrink: 0
                 }}>
                   <MapPin size={24} />
                 </div>
                 <div className="flex gap-1">
                   <button
                     className="btn btn-secondary"
-                    style={{ padding: '0.5rem' }}
+                    style={{ padding: '0.5rem', minWidth: '36px' }}
                     onClick={() => openItemsModal(location)}
                     title="View items"
                   >
@@ -203,7 +211,7 @@ function Locations() {
                   </button>
                   <button
                     className="btn btn-secondary"
-                    style={{ padding: '0.5rem' }}
+                    style={{ padding: '0.5rem', minWidth: '36px' }}
                     onClick={() => openEditModal(location)}
                     title="Edit location"
                   >
@@ -211,7 +219,7 @@ function Locations() {
                   </button>
                   <button
                     className="btn btn-danger"
-                    style={{ padding: '0.5rem' }}
+                    style={{ padding: '0.5rem', minWidth: '36px' }}
                     onClick={() => deleteLocation(location.id)}
                     title="Delete location"
                   >
@@ -220,34 +228,35 @@ function Locations() {
                 </div>
               </div>
               
-              <h3 style={{ fontSize: '1.125rem', marginBottom: '0.5rem', fontWeight: 600 }}>
+              <h3 style={{ fontSize: '1.125rem', marginBottom: '0.5rem', fontWeight: 600, wordBreak: 'break-word' }}>
                 {location.name}
               </h3>
               
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span className="badge badge-medium" style={{
-                  background: `${locationTypeColors[location.location_type]}20`,
-                  color: locationTypeColors[location.location_type]
-                }}>
-                  {location.location_type}
-                </span>
-              </div>
+              <span className="badge badge-medium" style={{
+                background: `${locationTypeColors[location.location_type]}20`,
+                color: locationTypeColors[location.location_type],
+                textTransform: 'capitalize',
+                fontSize: '0.75rem'
+              }}>
+                {location.location_type}
+              </span>
             </div>
           ))}
         </div>
       )}
 
-      {/* Add/Edit Location Modal */}
+      {/* Add/Edit Location Modal - Mobile Optimized */}
       {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-overlay" onClick={() => !saving && setShowModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ margin: '1rem' }}>
             <div className="flex items-center justify-between" style={{ marginBottom: '1.5rem' }}>
-              <h2 style={{ fontSize: '1.5rem' }}>
+              <h2 style={{ fontSize: 'clamp(1.25rem, 4vw, 1.5rem)' }}>
                 {editingLocation ? 'Edit Location' : 'Add New Location'}
               </h2>
               <button
-                onClick={() => setShowModal(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+                onClick={() => !saving && setShowModal(false)}
+                disabled={saving}
+                style={{ background: 'none', border: 'none', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.5 : 1 }}
               >
                 <X size={24} />
               </button>
@@ -255,7 +264,7 @@ function Locations() {
 
             <form onSubmit={handleSubmit}>
               <div style={{ marginBottom: '1rem' }}>
-                <label className="label">Location Name</label>
+                <label className="label">Location Name *</label>
                 <input
                   type="text"
                   className="input"
@@ -263,15 +272,17 @@ function Locations() {
                   value={formData.name}
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
                   required
+                  disabled={saving}
                 />
               </div>
 
               <div style={{ marginBottom: '1.5rem' }}>
-                <label className="label">Location Type</label>
+                <label className="label">Location Type *</label>
                 <select
                   className="select"
                   value={formData.location_type}
                   onChange={(e) => setFormData({...formData, location_type: e.target.value})}
+                  disabled={saving}
                 >
                   <option value="shelf">Shelf</option>
                   <option value="drawer">Drawer</option>
@@ -281,14 +292,22 @@ function Locations() {
                 </select>
               </div>
 
-              <div className="flex gap-2">
-                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
-                  {editingLocation ? 'Update Location' : 'Create Location'}
+              <div className="flex gap-2 mobile-stack">
+                <button type="submit" className="btn btn-primary mobile-full" style={{ flex: 1 }} disabled={saving}>
+                  {saving ? (
+                    <>
+                      <div className="spinner" style={{ width: '20px', height: '20px' }}></div>
+                      <span>{editingLocation ? 'Updating...' : 'Creating...'}</span>
+                    </>
+                  ) : (
+                    <span>{editingLocation ? 'Update Location' : 'Create Location'}</span>
+                  )}
                 </button>
                 <button 
                   type="button" 
-                  className="btn btn-secondary"
+                  className="btn btn-secondary mobile-full"
                   onClick={() => setShowModal(false)}
+                  disabled={saving}
                 >
                   Cancel
                 </button>
@@ -298,13 +317,13 @@ function Locations() {
         </div>
       )}
 
-      {/* View Items Modal */}
+      {/* View Items Modal - Mobile Optimized */}
       {showItemsModal && selectedLocation && (
         <div className="modal-overlay" onClick={() => setShowItemsModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '700px' }}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ margin: '1rem', maxWidth: '700px' }}>
             <div className="flex items-center justify-between" style={{ marginBottom: '1.5rem' }}>
-              <h2 style={{ fontSize: '1.5rem' }}>
-                📦 Items in {selectedLocation.name}
+              <h2 style={{ fontSize: 'clamp(1.25rem, 4vw, 1.5rem)' }}>
+                📦 {selectedLocation.name}
               </h2>
               <button
                 onClick={() => setShowItemsModal(false)}
@@ -314,19 +333,24 @@ function Locations() {
               </button>
             </div>
 
-            {locationItems.length === 0 ? (
+            {loadingItems ? (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px', flexDirection: 'column', gap: '1rem' }}>
+                <div className="spinner"></div>
+                <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading items...</p>
+              </div>
+            ) : locationItems.length === 0 ? (
               <div className="empty-state">
                 <Package size={60} style={{ opacity: 0.3 }} />
-                <p style={{ marginTop: '1rem' }}>No items in this location yet</p>
+                <p style={{ marginTop: '1rem', fontSize: '0.875rem' }}>No items in this location yet</p>
               </div>
             ) : (
               <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
-                <p style={{ marginBottom: '1rem', color: '#6b7280' }}>
+                <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
                   Total: {locationItems.length} item(s)
                 </p>
-                <div className="grid grid-2">
+                <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.75rem' }}>
                   {locationItems.map((item) => (
-                    <div key={item.id} className="card" style={{ marginBottom: '0.75rem' }}>
+                    <div key={item.id} className="card" style={{ padding: '0.75rem' }}>
                       {item.photo_url && (
                         <img 
                           src={item.photo_url} 
@@ -340,8 +364,8 @@ function Locations() {
                           }}
                         />
                       )}
-                      <h4 style={{ fontWeight: 600, marginBottom: '0.5rem' }}>{item.name}</h4>
-                      <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                      <h4 style={{ fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.9rem', wordBreak: 'break-word' }}>{item.name}</h4>
+                      <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
                         <div>Quantity: {item.quantity}</div>
                         <div>Stock: {item.stock_level}</div>
                         {item.expiry_date && (

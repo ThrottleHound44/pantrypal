@@ -40,8 +40,8 @@ class Item(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
     location_id: str
-    quantity: int
-    stock_level: str
+    quantity: float  # Changed from int to float for decimal quantities
+    stock_level: str  # High, Medium, Low, Out of Stock
     expiry_date: Optional[str] = None
     photo_url: Optional[str] = None
     family_id: str = "default-family"
@@ -180,7 +180,7 @@ async def create_item(item: Item):
     item_dict = item.dict()
     await db.items.insert_one(item_dict)
     
-    if item.stock_level == "Low":
+    if item.stock_level in ["Low", "Out of Stock"]:
         auto_list = await db.grocery_lists.find_one({"family_id": "default-family", "is_auto": True})
         if not auto_list:
             auto_list = GroceryList(name="Low Stock Items (Auto)", is_auto=True)
@@ -470,12 +470,14 @@ async def get_statistics():
                 pass
     
     low_stock = await db.items.count_documents({"family_id": "default-family", "stock_level": "Low"})
+    out_of_stock = await db.items.count_documents({"family_id": "default-family", "stock_level": "Out of Stock"})
     
     return {
         "total_items": total_items,
         "total_locations": total_locations,
         "expiring_soon": expiring_soon,
-        "low_stock": low_stock
+        "low_stock": low_stock,
+        "out_of_stock": out_of_stock
     }
 
 @app.get("/")

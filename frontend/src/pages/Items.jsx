@@ -83,8 +83,10 @@ function Items() {
   const handlePhotoSelect = async (e) => {
     const file = e.target.files[0];
     if (file) {
+      setSaving(true);
       const compressed = await compressImage(file);
       setFormData({...formData, photo_url: compressed});
+      setSaving(false);
     }
   };
 
@@ -120,7 +122,6 @@ function Items() {
     
     try {
       if (editingItem) {
-        // Update existing item
         const res = await fetch(`/api/items/${editingItem.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -129,7 +130,6 @@ function Items() {
         
         if (res.ok) {
           const updatedItem = await res.json();
-          // Update in state
           setItems(items.map(item => 
             item.id === editingItem.id ? updatedItem : item
           ));
@@ -139,7 +139,6 @@ function Items() {
           alert('Failed to update item. Please try again.');
         }
       } else {
-        // Create new item
         const res = await fetch('/api/items', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -155,7 +154,6 @@ function Items() {
         }
       }
       
-      // Reset form
       setFormData({
         name: '',
         location_id: '',
@@ -196,23 +194,25 @@ function Items() {
   const stockLevelColors = {
     'High': { bg: '#d1fae5', text: '#065f46' },
     'Medium': { bg: '#fef3c7', text: '#92400e' },
-    'Low': { bg: '#fee2e2', text: '#991b1b' }
+    'Low': { bg: '#fee2e2', text: '#991b1b' },
+    'Out of Stock': { bg: '#f3f4f6', text: '#374151' }
   };
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px', flexDirection: 'column', gap: '1rem' }}>
         <div className="spinner"></div>
+        <p style={{ color: '#6b7280' }}>Loading items...</p>
       </div>
     );
   }
 
   return (
     <div>
-      <div className="flex items-center justify-between mobile-stack" style={{ marginBottom: '2rem', gap: '1rem' }}>
+      <div className="flex items-center justify-between mobile-stack" style={{ marginBottom: '1.5rem', gap: '1rem' }}>
         <div>
-          <h1 style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>Food Items</h1>
-          <p style={{ color: '#6b7280' }}>Manage your pantry and fridge inventory</p>
+          <h1 style={{ fontSize: 'clamp(1.5rem, 5vw, 2rem)', marginBottom: '0.5rem' }}>Food Items</h1>
+          <p style={{ color: '#6b7280', fontSize: 'clamp(0.875rem, 3vw, 1rem)' }}>Manage your pantry and fridge inventory</p>
         </div>
         <button 
           className="btn btn-primary mobile-full"
@@ -230,7 +230,7 @@ function Items() {
               <Package size={80} />
             </div>
             <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>No items yet</h3>
-            <p style={{ marginBottom: '1.5rem' }}>
+            <p style={{ marginBottom: '1.5rem', fontSize: '0.875rem' }}>
               Start adding food items to track your inventory
             </p>
             <button 
@@ -243,16 +243,16 @@ function Items() {
           </div>
         </div>
       ) : (
-        <div className="grid grid-3">
+        <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
           {items.map((item) => (
-            <div key={item.id} className="card">
+            <div key={item.id} className="card" style={{ padding: '1rem' }}>
               {item.photo_url && (
                 <img 
                   src={item.photo_url} 
                   alt={item.name}
                   style={{ 
                     width: '100%', 
-                    height: '200px', 
+                    height: '180px', 
                     objectFit: 'cover', 
                     borderRadius: '10px',
                     marginBottom: '1rem'
@@ -260,21 +260,21 @@ function Items() {
                 />
               )}
               
-              <div className="flex items-center justify-between" style={{ marginBottom: '0.75rem' }}>
-                <h3 style={{ fontSize: '1.125rem', fontWeight: 600, flex: 1 }}>
+              <div className="flex items-center justify-between" style={{ marginBottom: '0.75rem', gap: '0.5rem' }}>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 600, flex: 1, wordBreak: 'break-word' }}>
                   {item.name}
                 </h3>
                 <div className="flex gap-1">
                   <button
                     className="btn btn-secondary"
-                    style={{ padding: '0.5rem' }}
+                    style={{ padding: '0.5rem', minWidth: '36px' }}
                     onClick={() => openEditModal(item)}
                   >
                     <Edit size={16} />
                   </button>
                   <button
                     className="btn btn-danger"
-                    style={{ padding: '0.5rem' }}
+                    style={{ padding: '0.5rem', minWidth: '36px' }}
                     onClick={() => deleteItem(item.id)}
                   >
                     <Trash2 size={16} />
@@ -301,27 +301,29 @@ function Items() {
                 style={{
                   background: stockLevelColors[item.stock_level].bg,
                   color: stockLevelColors[item.stock_level].text,
-                  display: 'inline-block'
+                  display: 'inline-block',
+                  fontSize: '0.75rem'
                 }}
               >
-                {item.stock_level} Stock
+                {item.stock_level}
               </span>
             </div>
           ))}
         </div>
       )}
 
-      {/* Add/Edit Modal */}
+      {/* Add/Edit Modal - Mobile Optimized */}
       {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-overlay" onClick={() => !saving && setShowModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ margin: '1rem', maxHeight: '90vh', overflowY: 'auto' }}>
             <div className="flex items-center justify-between" style={{ marginBottom: '1.5rem' }}>
-              <h2 style={{ fontSize: '1.5rem' }}>
+              <h2 style={{ fontSize: 'clamp(1.25rem, 4vw, 1.5rem)' }}>
                 {editingItem ? 'Edit Item' : 'Add New Item'}
               </h2>
               <button
-                onClick={() => setShowModal(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+                onClick={() => !saving && setShowModal(false)}
+                disabled={saving}
+                style={{ background: 'none', border: 'none', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.5 : 1 }}
               >
                 <X size={24} />
               </button>
@@ -329,7 +331,7 @@ function Items() {
 
             <form onSubmit={handleSubmit}>
               <div style={{ marginBottom: '1rem' }}>
-                <label className="label">Item Name</label>
+                <label className="label">Item Name *</label>
                 <input
                   type="text"
                   className="input"
@@ -337,16 +339,18 @@ function Items() {
                   value={formData.name}
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
                   required
+                  disabled={saving}
                 />
               </div>
 
               <div style={{ marginBottom: '1rem' }}>
-                <label className="label">Location</label>
+                <label className="label">Location *</label>
                 <select
                   className="select"
                   value={formData.location_id}
                   onChange={(e) => setFormData({...formData, location_id: e.target.value})}
                   required
+                  disabled={saving}
                 >
                   <option value="">Select a location</option>
                   {locations.map((location) => (
@@ -359,27 +363,32 @@ function Items() {
 
               <div className="grid grid-2" style={{ marginBottom: '1rem' }}>
                 <div>
-                  <label className="label">Quantity</label>
+                  <label className="label">Quantity *</label>
                   <input
                     type="number"
                     className="input"
-                    min="1"
+                    min="0"
+                    step="0.1"
                     value={formData.quantity}
-                    onChange={(e) => setFormData({...formData, quantity: parseInt(e.target.value)})}
+                    onChange={(e) => setFormData({...formData, quantity: parseFloat(e.target.value) || 0})}
                     required
+                    disabled={saving}
+                    placeholder="e.g., 1.5"
                   />
                 </div>
 
                 <div>
-                  <label className="label">Stock Level</label>
+                  <label className="label">Stock Level *</label>
                   <select
                     className="select"
                     value={formData.stock_level}
                     onChange={(e) => setFormData({...formData, stock_level: e.target.value})}
+                    disabled={saving}
                   >
                     <option value="High">High</option>
                     <option value="Medium">Medium</option>
                     <option value="Low">Low</option>
+                    <option value="Out of Stock">Out of Stock</option>
                   </select>
                 </div>
               </div>
@@ -394,6 +403,7 @@ function Items() {
                   className="input"
                   value={formData.expiry_date}
                   onChange={(e) => setFormData({...formData, expiry_date: e.target.value})}
+                  disabled={saving}
                 />
               </div>
 
@@ -409,6 +419,7 @@ function Items() {
                   capture="environment"
                   onChange={handlePhotoSelect}
                   className="input"
+                  disabled={saving}
                 />
                 {formData.photo_url && (
                   <div style={{ marginTop: '1rem' }}>
@@ -428,6 +439,7 @@ function Items() {
                       className="btn btn-secondary"
                       style={{ marginTop: '0.5rem', width: '100%' }}
                       onClick={() => setFormData({...formData, photo_url: ''})}
+                      disabled={saving}
                     >
                       Remove Photo
                     </button>
@@ -435,8 +447,8 @@ function Items() {
                 )}
               </div>
 
-              <div className="flex gap-2">
-                <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={saving}>
+              <div className="flex gap-2 mobile-stack">
+                <button type="submit" className="btn btn-primary mobile-full" style={{ flex: 1 }} disabled={saving}>
                   {saving ? (
                     <>
                       <div className="spinner" style={{ width: '20px', height: '20px' }}></div>
@@ -448,7 +460,7 @@ function Items() {
                 </button>
                 <button 
                   type="button" 
-                  className="btn btn-secondary"
+                  className="btn btn-secondary mobile-full"
                   onClick={() => setShowModal(false)}
                   disabled={saving}
                 >

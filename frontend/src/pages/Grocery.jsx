@@ -15,6 +15,7 @@ function Grocery() {
     quantity: 1
   });
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -32,7 +33,6 @@ function Grocery() {
       const data = await res.json();
       setGroceryLists(data);
       
-      // Auto-select first list or auto list
       if (data.length > 0) {
         const autoList = data.find(l => l.is_auto);
         setSelectedListId(autoList ? autoList.id : data[0].id);
@@ -57,6 +57,8 @@ function Grocery() {
 
   const createList = async (e) => {
     e.preventDefault();
+    setSaving(true);
+    
     try {
       const res = await fetch('/api/grocery-lists', {
         method: 'POST',
@@ -66,7 +68,6 @@ function Grocery() {
       
       if (res.ok) {
         const newList = await res.json();
-        // Add to state immediately with item_count
         setGroceryLists([...groceryLists, { ...newList, item_count: 0 }]);
         setShowListModal(false);
         setNewListName('');
@@ -76,6 +77,8 @@ function Grocery() {
     } catch (error) {
       console.error('Error creating list:', error);
       alert('Failed to create list. Please try again.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -85,7 +88,6 @@ function Grocery() {
     try {
       const res = await fetch(`/api/grocery-lists/${listId}`, { method: 'DELETE' });
       if (res.ok) {
-        // Remove from state immediately
         setGroceryLists(groceryLists.filter(list => list.id !== listId));
         if (selectedListId === listId) {
           setSelectedListId(null);
@@ -108,6 +110,8 @@ function Grocery() {
       return;
     }
     
+    setSaving(true);
+    
     try {
       const res = await fetch('/api/grocery-items', {
         method: 'POST',
@@ -120,9 +124,7 @@ function Grocery() {
       
       if (res.ok) {
         const newItem = await res.json();
-        // Add to state immediately
         setGroceryItems([...groceryItems, newItem]);
-        // Update list count
         setGroceryLists(groceryLists.map(list => 
           list.id === selectedListId 
             ? { ...list, item_count: (list.item_count || 0) + 1 }
@@ -136,6 +138,8 @@ function Grocery() {
     } catch (error) {
       console.error('Error adding item:', error);
       alert('Failed to add item. Please try again.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -143,7 +147,6 @@ function Grocery() {
     try {
       const res = await fetch(`/api/grocery-items/${id}/complete`, { method: 'PUT' });
       if (res.ok) {
-        // Update status in state immediately
         setGroceryItems(groceryItems.map(item =>
           item.id === id ? { ...item, status: 'completed' } : item
         ));
@@ -160,9 +163,7 @@ function Grocery() {
     try {
       const res = await fetch(`/api/grocery-items/${id}`, { method: 'DELETE' });
       if (res.ok) {
-        // Remove from state immediately
         setGroceryItems(groceryItems.filter(item => item.id !== id));
-        // Update list count
         setGroceryLists(groceryLists.map(list => 
           list.id === selectedListId 
             ? { ...list, item_count: Math.max(0, (list.item_count || 0) - 1) }
@@ -185,15 +186,15 @@ function Grocery() {
   const moveItem = async (newListId) => {
     if (!itemToMove) return;
     
+    setSaving(true);
+    
     try {
       const res = await fetch(`/api/grocery-items/${itemToMove.id}/move?new_list_id=${newListId}`, {
         method: 'PUT'
       });
       
       if (res.ok) {
-        // Remove from current list immediately
         setGroceryItems(groceryItems.filter(item => item.id !== itemToMove.id));
-        // Update counts for both lists
         setGroceryLists(groceryLists.map(list => {
           if (list.id === selectedListId) {
             return { ...list, item_count: Math.max(0, (list.item_count || 0) - 1) };
@@ -210,6 +211,8 @@ function Grocery() {
     } catch (error) {
       console.error('Error moving item:', error);
       alert('Failed to move item.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -218,40 +221,40 @@ function Grocery() {
     
     try {
       const res = await fetch(`/api/grocery/export/${selectedListId}`);
-      const data = await res.json();
-      
-      const blob = new Blob([data.content], { type: 'text/calendar' });
+      const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = data.filename;
+      a.download = 'grocery-list.ics';
       document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
     } catch (error) {
       console.error('Error exporting list:', error);
+      alert('Failed to export list.');
     }
   };
 
-  const selectedList = groceryLists.find(l => l.id === selectedListId);
   const pendingItems = groceryItems.filter(item => item.status === 'pending');
   const completedItems = groceryItems.filter(item => item.status === 'completed');
+  const selectedList = groceryLists.find(l => l.id === selectedListId);
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px', flexDirection: 'column', gap: '1rem' }}>
         <div className="spinner"></div>
+        <p style={{ color: '#6b7280' }}>Loading grocery lists...</p>
       </div>
     );
   }
 
   return (
     <div>
-      <div className="flex items-center justify-between mobile-stack" style={{ marginBottom: '2rem', gap: '1rem' }}>
+      <div className="flex items-center justify-between mobile-stack" style={{ marginBottom: '1.5rem', gap: '1rem' }}>
         <div>
-          <h1 style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>Grocery Lists</h1>
-          <p style={{ color: '#6b7280' }}>Manage multiple shopping lists</p>
+          <h1 style={{ fontSize: 'clamp(1.5rem, 5vw, 2rem)', marginBottom: '0.5rem' }}>Grocery Lists</h1>
+          <p style={{ color: '#6b7280', fontSize: 'clamp(0.875rem, 3vw, 1rem)' }}>Manage multiple shopping lists</p>
         </div>
         <button 
           className="btn btn-primary mobile-full"
@@ -262,248 +265,234 @@ function Grocery() {
         </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
-        {/* Lists Sidebar */}
-        <div className="card" style={{ height: 'fit-content' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        {/* Lists - Mobile Optimized */}
+        <div className="card">
           <h3 style={{ fontSize: '1.125rem', marginBottom: '1rem', fontWeight: 600 }}>
-            <List size={20} style={{ display: 'inline', marginRight: '0.5rem' }} />
-            My Lists
+            📋 Your Lists
           </h3>
-          
           {groceryLists.length === 0 ? (
-            <p style={{ color: '#718096', fontSize: '0.875rem' }}>
-              No lists yet. Create one to get started!
-            </p>
+            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No lists yet. Create one to get started!</p>
           ) : (
-            <div>
-              {groceryLists.map((list) => (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {groceryLists.map(list => (
                 <div
                   key={list.id}
+                  onClick={() => setSelectedListId(list.id)}
                   style={{
-                    padding: '0.75rem',
-                    borderRadius: '8px',
-                    marginBottom: '0.5rem',
-                    background: selectedListId === list.id ? '#667eea15' : '#f7fafc',
-                    border: selectedListId === list.id ? '2px solid #667eea' : '2px solid transparent',
+                    padding: '0.875rem',
+                    background: selectedListId === list.id ? '#10b98110' : '#f9fafb',
+                    border: selectedListId === list.id ? '2px solid #10b981' : '1px solid #e5e7eb',
+                    borderRadius: '10px',
                     cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    minHeight: '56px',
                     transition: 'all 0.2s'
                   }}
-                  onClick={() => setSelectedListId(list.id)}
                 >
-                  <div className="flex items-center justify-between">
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>
-                        {list.name}
-                        {list.is_auto && (
-                          <span style={{
-                            marginLeft: '0.5rem',
-                            fontSize: '0.75rem',
-                            padding: '0.125rem 0.5rem',
-                            borderRadius: '10px',
-                            background: '#667eea20',
-                            color: '#667eea'
-                          }}>
-                            Auto
-                          </span>
-                        )}
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: '#718096' }}>
-                        {list.item_count || 0} items
-                      </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.25rem' }}>
+                      {list.name} {list.is_auto && '⭐'}
                     </div>
-                    {!list.is_auto && (
-                      <button
-                        className="btn btn-danger"
-                        style={{ padding: '0.375rem' }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteList(list.id);
-                        }}
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    )}
+                    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                      {list.item_count || 0} item(s)
+                    </div>
                   </div>
+                  {!list.is_auto && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteList(list.id);
+                      }}
+                      className="btn btn-danger"
+                      style={{ padding: '0.5rem', minWidth: '36px' }}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
           )}
         </div>
 
-        {/* Items Display */}
-        <div>
-          {!selectedListId ? (
-            <div className="card">
-              <div className="empty-state">
-                <ShoppingCart size={80} style={{ opacity: 0.3 }} />
-                <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>Select a list</h3>
-                <p>Choose a list from the sidebar to view items</p>
+        {/* Items Section - Mobile Optimized */}
+        {selectedListId && (
+          <div className="card">
+            <div className="flex items-center justify-between mobile-stack" style={{ marginBottom: '1rem', gap: '0.75rem' }}>
+              <h3 style={{ fontSize: '1.125rem', fontWeight: 600 }}>
+                🛒 {selectedList?.name}
+              </h3>
+              <div className="flex gap-2 mobile-full">
+                <button 
+                  className="btn btn-primary mobile-full"
+                  onClick={() => setShowItemModal(true)}
+                  style={{ flex: 1 }}
+                >
+                  <Plus size={18} />
+                  <span>Add Item</span>
+                </button>
+                <button 
+                  className="btn btn-secondary"
+                  onClick={exportList}
+                  style={{ padding: '0.625rem 1rem', minWidth: '44px' }}
+                >
+                  <Download size={18} />
+                </button>
               </div>
             </div>
-          ) : (
-            <>
-              <div className="flex items-center justify-between" style={{ marginBottom: '1rem' }}>
-                <h2 style={{ fontSize: '1.5rem', fontWeight: 600 }}>
-                  {selectedList?.name}
-                </h2>
-                <div className="flex gap-2">
-                  {pendingItems.length > 0 && (
-                    <button className="btn btn-secondary" onClick={exportList}>
-                      <Download size={18} />
-                      Export
-                    </button>
-                  )}
-                  <button className="btn btn-primary" onClick={() => setShowItemModal(true)}>
-                    <Plus size={18} />
-                    Add Item
-                  </button>
-                </div>
-              </div>
 
-              <div className="grid grid-2">
-                {/* Pending */}
-                <div className="card">
-                  <h3 style={{ fontSize: '1.125rem', marginBottom: '1rem', fontWeight: 600 }}>
-                    📝 To Buy ({pendingItems.length})
-                  </h3>
-                  
-                  {pendingItems.length === 0 ? (
-                    <div className="empty-state">
-                      <p style={{ fontSize: '0.875rem' }}>No items to buy</p>
-                    </div>
-                  ) : (
-                    pendingItems.map((item) => (
-                      <div
-                        key={item.id}
-                        style={{
-                          padding: '0.75rem',
-                          background: '#f7fafc',
-                          borderRadius: '8px',
-                          marginBottom: '0.5rem',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          gap: '0.5rem'
-                        }}
-                      >
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>
-                            {item.item_name}
-                          </div>
-                          <div style={{ fontSize: '0.75rem', color: '#718096' }}>
-                            Qty: {item.quantity}
-                            {item.added_by === 'system' && ' • Auto-added'}
-                          </div>
-                        </div>
-                        <div className="flex gap-1">
-                          <button
-                            className="btn btn-secondary"
-                            style={{ padding: '0.375rem', fontSize: '0.75rem' }}
-                            onClick={() => openMoveModal(item)}
-                            title="Move to another list"
-                          >
-                            <ArrowRight size={14} />
-                          </button>
-                          <button
-                            className="btn btn-success"
-                            style={{ padding: '0.375rem' }}
-                            onClick={() => completeItem(item.id)}
-                          >
-                            <Check size={14} />
-                          </button>
-                          <button
-                            className="btn btn-danger"
-                            style={{ padding: '0.375rem' }}
-                            onClick={() => deleteItem(item.id)}
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
+            {/* Pending Items */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <h4 style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.75rem', color: '#374151' }}>
+                To Buy ({pendingItems.length})
+              </h4>
+              {pendingItems.length === 0 ? (
+                <p style={{ color: '#6b7280', fontSize: '0.875rem', fontStyle: 'italic' }}>No items to buy</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {pendingItems.map(item => (
+                    <div
+                      key={item.id}
+                      style={{
+                        padding: '0.875rem',
+                        background: '#f9fafb',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem',
+                        minHeight: '56px'
+                      }}
+                    >
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{item.item_name}</div>
+                        <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Qty: {item.quantity}</div>
                       </div>
-                    ))
-                  )}
-                </div>
-
-                {/* Completed */}
-                <div className="card">
-                  <h3 style={{ fontSize: '1.125rem', marginBottom: '1rem', fontWeight: 600 }}>
-                    ✅ Completed ({completedItems.length})
-                  </h3>
-                  
-                  {completedItems.length === 0 ? (
-                    <div className="empty-state">
-                      <p style={{ fontSize: '0.875rem' }}>No completed items</p>
-                    </div>
-                  ) : (
-                    completedItems.map((item) => (
-                      <div
-                        key={item.id}
-                        style={{
-                          padding: '0.75rem',
-                          background: '#f0fdf4',
-                          borderRadius: '8px',
-                          marginBottom: '0.5rem',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          opacity: 0.7
-                        }}
-                      >
-                        <div style={{ flex: 1 }}>
-                          <div style={{
-                            fontWeight: 600,
-                            fontSize: '0.9rem',
-                            textDecoration: 'line-through',
-                            color: '#16a34a'
-                          }}>
-                            {item.item_name}
-                          </div>
-                          <div style={{ fontSize: '0.75rem', color: '#718096' }}>
-                            Qty: {item.quantity}
-                          </div>
-                        </div>
+                      <div className="flex gap-1">
                         <button
-                          className="btn btn-danger"
-                          style={{ padding: '0.375rem' }}
-                          onClick={() => deleteItem(item.id)}
+                          onClick={() => completeItem(item.id)}
+                          className="btn btn-success"
+                          style={{ padding: '0.5rem', minWidth: '40px' }}
+                          title="Mark as complete"
                         >
-                          <Trash2 size={14} />
+                          <Check size={18} />
+                        </button>
+                        <button
+                          onClick={() => openMoveModal(item)}
+                          className="btn btn-secondary"
+                          style={{ padding: '0.5rem', minWidth: '40px' }}
+                          title="Move to another list"
+                        >
+                          <ArrowRight size={18} />
+                        </button>
+                        <button
+                          onClick={() => deleteItem(item.id)}
+                          className="btn btn-danger"
+                          style={{ padding: '0.5rem', minWidth: '40px' }}
+                          title="Delete"
+                        >
+                          <Trash2 size={18} />
                         </button>
                       </div>
-                    ))
-                  )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Completed Items */}
+            {completedItems.length > 0 && (
+              <div>
+                <h4 style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.75rem', color: '#374151' }}>
+                  Completed ({completedItems.length})
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {completedItems.map(item => (
+                    <div
+                      key={item.id}
+                      style={{
+                        padding: '0.875rem',
+                        background: '#f3f4f6',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem',
+                        opacity: 0.6,
+                        minHeight: '56px'
+                      }}
+                    >
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 600, fontSize: '0.9rem', textDecoration: 'line-through' }}>
+                          {item.item_name}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Qty: {item.quantity}</div>
+                      </div>
+                      <button
+                        onClick={() => deleteItem(item.id)}
+                        className="btn btn-danger"
+                        style={{ padding: '0.5rem', minWidth: '40px' }}
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  ))}
                 </div>
               </div>
-            </>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* New List Modal */}
+      {/* Create List Modal */}
       {showListModal && (
-        <div className="modal-overlay" onClick={() => setShowListModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+        <div className="modal-overlay" onClick={() => !saving && setShowListModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ margin: '1rem' }}>
             <div className="flex items-center justify-between" style={{ marginBottom: '1.5rem' }}>
-              <h2 style={{ fontSize: '1.5rem' }}>Create New List</h2>
-              <button onClick={() => setShowListModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+              <h2 style={{ fontSize: 'clamp(1.25rem, 4vw, 1.5rem)' }}>Create New List</h2>
+              <button
+                onClick={() => !saving && setShowListModal(false)}
+                disabled={saving}
+                style={{ background: 'none', border: 'none', cursor: saving ? 'not-allowed' : 'pointer' }}
+              >
                 <X size={24} />
               </button>
             </div>
+
             <form onSubmit={createList}>
               <div style={{ marginBottom: '1.5rem' }}>
-                <label className="label">List Name</label>
+                <label className="label">List Name *</label>
                 <input
                   type="text"
                   className="input"
-                  placeholder="e.g., Weekly Shopping, Party Supplies"
+                  placeholder="e.g., Weekly Groceries"
                   value={newListName}
                   onChange={(e) => setNewListName(e.target.value)}
                   required
+                  disabled={saving}
                 />
               </div>
-              <div className="flex gap-2">
-                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Create</button>
-                <button type="button" className="btn btn-secondary" onClick={() => setShowListModal(false)}>Cancel</button>
+
+              <div className="flex gap-2 mobile-stack">
+                <button type="submit" className="btn btn-primary mobile-full" style={{ flex: 1 }} disabled={saving}>
+                  {saving ? (
+                    <>
+                      <div className="spinner" style={{ width: '20px', height: '20px' }}></div>
+                      <span>Creating...</span>
+                    </>
+                  ) : (
+                    <span>Create List</span>
+                  )}
+                </button>
+                <button 
+                  type="button" 
+                  className="btn btn-secondary mobile-full"
+                  onClick={() => setShowListModal(false)}
+                  disabled={saving}
+                >
+                  Cancel
+                </button>
               </div>
             </form>
           </div>
@@ -512,17 +501,22 @@ function Grocery() {
 
       {/* Add Item Modal */}
       {showItemModal && (
-        <div className="modal-overlay" onClick={() => setShowItemModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+        <div className="modal-overlay" onClick={() => !saving && setShowItemModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ margin: '1rem' }}>
             <div className="flex items-center justify-between" style={{ marginBottom: '1.5rem' }}>
-              <h2 style={{ fontSize: '1.5rem' }}>Add Item</h2>
-              <button onClick={() => setShowItemModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+              <h2 style={{ fontSize: 'clamp(1.25rem, 4vw, 1.5rem)' }}>Add Item</h2>
+              <button
+                onClick={() => !saving && setShowItemModal(false)}
+                disabled={saving}
+                style={{ background: 'none', border: 'none', cursor: saving ? 'not-allowed' : 'pointer' }}
+              >
                 <X size={24} />
               </button>
             </div>
+
             <form onSubmit={handleAddItem}>
               <div style={{ marginBottom: '1rem' }}>
-                <label className="label">Item Name</label>
+                <label className="label">Item Name *</label>
                 <input
                   type="text"
                   className="input"
@@ -530,10 +524,12 @@ function Grocery() {
                   value={formData.item_name}
                   onChange={(e) => setFormData({...formData, item_name: e.target.value})}
                   required
+                  disabled={saving}
                 />
               </div>
+
               <div style={{ marginBottom: '1.5rem' }}>
-                <label className="label">Quantity</label>
+                <label className="label">Quantity *</label>
                 <input
                   type="number"
                   className="input"
@@ -541,11 +537,29 @@ function Grocery() {
                   value={formData.quantity}
                   onChange={(e) => setFormData({...formData, quantity: parseInt(e.target.value)})}
                   required
+                  disabled={saving}
                 />
               </div>
-              <div className="flex gap-2">
-                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Add</button>
-                <button type="button" className="btn btn-secondary" onClick={() => setShowItemModal(false)}>Cancel</button>
+
+              <div className="flex gap-2 mobile-stack">
+                <button type="submit" className="btn btn-primary mobile-full" style={{ flex: 1 }} disabled={saving}>
+                  {saving ? (
+                    <>
+                      <div className="spinner" style={{ width: '20px', height: '20px' }}></div>
+                      <span>Adding...</span>
+                    </>
+                  ) : (
+                    <span>Add Item</span>
+                  )}
+                </button>
+                <button 
+                  type="button" 
+                  className="btn btn-secondary mobile-full"
+                  onClick={() => setShowItemModal(false)}
+                  disabled={saving}
+                >
+                  Cancel
+                </button>
               </div>
             </form>
           </div>
@@ -554,28 +568,47 @@ function Grocery() {
 
       {/* Move Item Modal */}
       {showMoveModal && itemToMove && (
-        <div className="modal-overlay" onClick={() => setShowMoveModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+        <div className="modal-overlay" onClick={() => !saving && setShowMoveModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ margin: '1rem' }}>
             <div className="flex items-center justify-between" style={{ marginBottom: '1.5rem' }}>
-              <h2 style={{ fontSize: '1.5rem' }}>Move Item</h2>
-              <button onClick={() => setShowMoveModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+              <h2 style={{ fontSize: 'clamp(1.25rem, 4vw, 1.5rem)' }}>Move Item</h2>
+              <button
+                onClick={() => !saving && setShowMoveModal(false)}
+                disabled={saving}
+                style={{ background: 'none', border: 'none', cursor: saving ? 'not-allowed' : 'pointer' }}
+              >
                 <X size={24} />
               </button>
             </div>
-            <p style={{ marginBottom: '1rem' }}>
-              Move <strong>{itemToMove.item_name}</strong> to:
+
+            <p style={{ marginBottom: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+              Move "{itemToMove.item_name}" to:
             </p>
-            <div>
-              {groceryLists.filter(l => l.id !== selectedListId).map((list) => (
-                <button
-                  key={list.id}
-                  className="btn btn-secondary w-full"
-                  style={{ marginBottom: '0.5rem', justifyContent: 'flex-start' }}
-                  onClick={() => moveItem(list.id)}
-                >
-                  {list.name}
-                </button>
-              ))}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {groceryLists
+                .filter(list => list.id !== selectedListId)
+                .map(list => (
+                  <button
+                    key={list.id}
+                    onClick={() => moveItem(list.id)}
+                    className="btn btn-secondary w-full"
+                    style={{ justifyContent: 'flex-start', minHeight: '48px' }}
+                    disabled={saving}
+                  >
+                    {saving ? (
+                      <>
+                        <div className="spinner" style={{ width: '18px', height: '18px' }}></div>
+                        <span>Moving...</span>
+                      </>
+                    ) : (
+                      <>
+                        <List size={18} />
+                        <span>{list.name}</span>
+                      </>
+                    )}
+                  </button>
+                ))}
             </div>
           </div>
         </div>

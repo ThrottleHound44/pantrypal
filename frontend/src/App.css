@@ -507,15 +507,16 @@ textarea {
   /* Stat cards on mobile */
   .stat-card {
     padding: 1rem;
+    min-height: 80px;
   }
   
   .stat-value {
-    font-size: 1.5rem;
+    font-size: 1.75rem;
   }
   
   .stat-icon {
-    width: 40px;
-    height: 40px;
+    width: 45px;
+    height: 45px;
   }
   
   /* Cards on mobile */
@@ -528,12 +529,23 @@ textarea {
     padding: 1.5rem;
     margin: 1rem;
     max-height: 85vh;
+    width: calc(100% - 2rem);
   }
   
-  /* Buttons on mobile */
+  /* Buttons on mobile - TOUCH FRIENDLY */
   .btn {
-    padding: 0.625rem 1.25rem;
-    font-size: 0.875rem;
+    padding: 0.75rem 1.25rem;
+    font-size: 0.9rem;
+    min-height: 44px; /* iOS recommended minimum */
+    min-width: 44px;
+  }
+  
+  /* Input fields - TOUCH FRIENDLY */
+  .input,
+  .select,
+  textarea {
+    min-height: 44px;
+    font-size: 16px; /* Prevents zoom on iOS */
   }
   
   /* Hide long text on mobile */
@@ -551,6 +563,11 @@ textarea {
   .mobile-full {
     width: 100%;
   }
+  
+  /* Better spacing on mobile */
+  .gap-2 {
+    gap: 0.75rem;
+  }
 }
 
 @media (max-width: 480px) {
@@ -565,12 +582,25 @@ textarea {
   }
   
   .modal {
-    padding: 1rem;
+    padding: 1.25rem;
     border-radius: 16px;
+    margin: 0.75rem;
+    width: calc(100% - 1.5rem);
   }
   
   .stat-card {
     gap: 0.75rem;
+    padding: 0.875rem;
+    min-height: 70px;
+  }
+  
+  .stat-value {
+    font-size: 1.5rem;
+  }
+  
+  .stat-icon {
+    width: 40px;
+    height: 40px;
   }
   
   h1 {
@@ -583,6 +613,18 @@ textarea {
   
   h3 {
     font-size: 1rem !important;
+  }
+  
+  /* Extra touch spacing */
+  .btn {
+    min-height: 48px;
+    padding: 0.875rem 1.5rem;
+  }
+  
+  /* Larger touch targets for icons */
+  button svg {
+    min-width: 20px;
+    min-height: 20px;
   }
 }
 
