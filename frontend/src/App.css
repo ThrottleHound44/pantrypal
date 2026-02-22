@@ -649,6 +649,25 @@ textarea {
   font-weight: 600;
 }
 
+/* Mobile/Desktop Display */
+.mobile-only {
+  display: none;
+}
+
+.desktop-only {
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .mobile-only {
+    display: block !important;
+  }
+  
+  .desktop-only {
+    display: none !important;
+  }
+}
+
 .mb-0 {
   margin-bottom: 0;
 }

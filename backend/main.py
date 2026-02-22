@@ -472,12 +472,25 @@ async def get_statistics():
     low_stock = await db.items.count_documents({"family_id": "default-family", "stock_level": "Low"})
     out_of_stock = await db.items.count_documents({"family_id": "default-family", "stock_level": "Out of Stock"})
     
+    # Count items in fridge locations
+    fridge_locations = []
+    async for loc in db.locations.find({"family_id": "default-family", "location_type": "fridge"}):
+        fridge_locations.append(loc['id'])
+    
+    fridge_items = 0
+    if fridge_locations:
+        fridge_items = await db.items.count_documents({
+            "family_id": "default-family",
+            "location_id": {"$in": fridge_locations}
+        })
+    
     return {
         "total_items": total_items,
         "total_locations": total_locations,
         "expiring_soon": expiring_soon,
         "low_stock": low_stock,
-        "out_of_stock": out_of_stock
+        "out_of_stock": out_of_stock,
+        "fridge_items": fridge_items
     }
 
 @app.get("/")

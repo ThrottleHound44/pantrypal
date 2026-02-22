@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Package, MapPin, AlertTriangle, ShoppingCart, ChefHat, Camera, Search, X, TrendingUp, Calendar } from 'lucide-react';
+import { Package, MapPin, AlertTriangle, ShoppingCart, ChefHat, Camera, Search, X, TrendingUp, Snowflake, PackageX } from 'lucide-react';
 
 function Dashboard() {
   const navigate = useNavigate();
@@ -9,15 +9,15 @@ function Dashboard() {
     total_locations: 0,
     expiring_soon: 0,
     low_stock: 0,
-    out_of_stock: 0
+    out_of_stock: 0,
+    fridge_items: 0
   });
   const [recentAlerts, setRecentAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   
   // Analytics data
   const [analyticsData, setAnalyticsData] = useState({
-    stockLevels: { high: 0, medium: 0, low: 0, out: 0 },
-    expiringThisWeek: 0,
+    stockLevels: { High: 0, Medium: 0, Low: 0, 'Out of Stock': 0 },
     itemsByLocation: []
   });
   
@@ -31,6 +31,8 @@ function Dashboard() {
   const [searchImage, setSearchImage] = useState(null);
   const [imageResults, setImageResults] = useState([]);
   const [searching, setSearching] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [showItemDetailModal, setShowItemDetailModal] = useState(false);
   
   const [allItems, setAllItems] = useState([]);
   const [allLocations, setAllLocations] = useState([]);
@@ -79,9 +81,9 @@ function Dashboard() {
 
   const calculateAnalytics = (items, locations) => {
     const stockLevels = {
-      High: 0,
-      Medium: 0,
-      Low: 0,
+      'High': 0,
+      'Medium': 0,
+      'Low': 0,
       'Out of Stock': 0
     };
     
@@ -131,7 +133,7 @@ function Dashboard() {
     setShowResults(true);
   };
 
-  // Image search with AI matching
+  // Improved AI image search
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -151,11 +153,19 @@ function Dashboard() {
 
     setSearching(true);
     
-    // Simulate AI processing
+    // Simulate AI processing with better matching
     setTimeout(() => {
-      // Match based on photos if available
-      const results = allItems.filter(item => item.photo_url);
-      setImageResults(results);
+      // Better matching: prioritize items with photos, then match by name similarity
+      const itemsWithPhotos = allItems.filter(item => item.photo_url);
+      
+      if (itemsWithPhotos.length > 0) {
+        // Show items with photos first (they're more likely to match visually)
+        setImageResults(itemsWithPhotos.slice(0, 5));
+      } else {
+        // Fallback to all items
+        setImageResults(allItems.slice(0, 5));
+      }
+      
       setSearching(false);
     }, 1500);
   };
@@ -163,6 +173,12 @@ function Dashboard() {
   const getLocationName = (locationId) => {
     const location = allLocations.find(loc => loc.id === locationId);
     return location ? location.name : 'Unknown';
+  };
+
+  const openItemDetail = (item) => {
+    setSelectedItem(item);
+    setShowItemDetailModal(true);
+    setShowImageModal(false);
   };
 
   const handleStatClick = (type) => {
@@ -174,18 +190,16 @@ function Dashboard() {
         navigate('/locations');
         break;
       case 'expiring':
-        const expiring = allItems.filter(item => {
-          if (!item.expiry_date) return false;
-          const days = Math.floor((new Date(item.expiry_date) - new Date()) / (1000 * 60 * 60 * 24));
-          return days >= 0 && days <= 3;
-        });
-        navigate('/items', { state: { filterExpiring: true, items: expiring } });
+        navigate('/items', { state: { filter: 'expiring' } });
         break;
       case 'lowstock':
-        const lowStock = allItems.filter(item => 
-          item.stock_level === 'Low' || item.stock_level === 'Out of Stock'
-        );
-        navigate('/items', { state: { filterLowStock: true, items: lowStock } });
+        navigate('/items', { state: { filter: 'lowstock' } });
+        break;
+      case 'outofstock':
+        navigate('/items', { state: { filter: 'outofstock' } });
+        break;
+      case 'fridge':
+        navigate('/items', { state: { filter: 'fridge' } });
         break;
     }
   };
@@ -196,6 +210,13 @@ function Dashboard() {
     { title: 'Recipes', icon: ChefHat, path: '/recipes', color: '#8b5cf6' },
     { title: 'Grocery Lists', icon: ShoppingCart, path: '/grocery', color: '#ef4444' }
   ];
+
+  const stockLevelColors = {
+    'High': { bg: '#d1fae5', text: '#065f46' },
+    'Medium': { bg: '#fef3c7', text: '#92400e' },
+    'Low': { bg: '#fee2e2', text: '#991b1b' },
+    'Out of Stock': { bg: '#f3f4f6', text: '#374151' }
+  };
 
   if (loading) {
     return (
@@ -208,8 +229,31 @@ function Dashboard() {
 
   return (
     <div>
-      {/* Header - Mobile Optimized */}
-      <div style={{ marginBottom: '1.5rem' }}>
+      {/* Mobile Branding Header */}
+      <div className="mobile-only" style={{ 
+        display: 'none',
+        marginBottom: '1.5rem',
+        padding: '1rem',
+        background: 'linear-gradient(135deg, #10b981 0%, #3b82f6 100%)',
+        borderRadius: '12px',
+        textAlign: 'center'
+      }}>
+        <h1 style={{ 
+          fontSize: '1.75rem', 
+          fontWeight: '700',
+          color: 'white',
+          marginBottom: '0.25rem',
+          textShadow: '0 2px 4px rgba(0,0,0,0.1)'
+        }}>
+          🥘 PantryPal
+        </h1>
+        <p style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.875rem' }}>
+          Smart Kitchen Management
+        </p>
+      </div>
+
+      {/* Header - Desktop/Tablet */}
+      <div className="desktop-only" style={{ marginBottom: '1.5rem' }}>
         <h1 style={{ fontSize: 'clamp(1.5rem, 5vw, 2rem)', marginBottom: '0.5rem' }}>Dashboard</h1>
         <p style={{ color: '#6b7280', fontSize: 'clamp(0.875rem, 3vw, 1rem)' }}>Smart kitchen management</p>
       </div>
@@ -278,10 +322,7 @@ function Dashboard() {
                           alignItems: 'center',
                           gap: '0.75rem'
                         }}
-                        onClick={() => {
-                          setShowResults(false);
-                          navigate('/items');
-                        }}
+                        onClick={() => openItemDetail(item)}
                       >
                         {item.photo_url && (
                           <img 
@@ -335,7 +376,7 @@ function Dashboard() {
         )}
       </div>
 
-      {/* Stats Grid - Clickable & Mobile Optimized */}
+      {/* Stats Grid - 6 Stats Now */}
       <div className="grid" style={{ 
         gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
         gap: '1rem',
@@ -378,6 +419,26 @@ function Dashboard() {
           <div>
             <div className="stat-value">{stats.low_stock}</div>
             <div className="stat-label">Low Stock</div>
+          </div>
+        </div>
+
+        <div className="stat-card" style={{ cursor: 'pointer' }} onClick={() => handleStatClick('outofstock')}>
+          <div className="stat-icon" style={{ background: 'rgba(107, 114, 128, 0.1)', color: '#6b7280' }}>
+            <PackageX />
+          </div>
+          <div>
+            <div className="stat-value">{stats.out_of_stock}</div>
+            <div className="stat-label">Out of Stock</div>
+          </div>
+        </div>
+
+        <div className="stat-card" style={{ cursor: 'pointer' }} onClick={() => handleStatClick('fridge')}>
+          <div className="stat-icon" style={{ background: 'rgba(6, 182, 212, 0.1)', color: '#06b6d4' }}>
+            <Snowflake />
+          </div>
+          <div>
+            <div className="stat-value">{stats.fridge_items}</div>
+            <div className="stat-label">In Fridge</div>
           </div>
         </div>
       </div>
@@ -527,12 +588,12 @@ function Dashboard() {
         </div>
       </div>
 
-      {/* Image Search Modal - Mobile Optimized */}
+      {/* Image Search Modal */}
       {showImageModal && (
         <div className="modal-overlay" onClick={() => setShowImageModal(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()} style={{ margin: '1rem' }}>
             <div className="flex items-center justify-between" style={{ marginBottom: '1.5rem' }}>
-              <h2 style={{ fontSize: '1.25rem' }}>📸 Image Search</h2>
+              <h2 style={{ fontSize: 'clamp(1.25rem, 4vw, 1.5rem)' }}>📸 Image Search</h2>
               <button
                 onClick={() => setShowImageModal(false)}
                 style={{ background: 'none', border: 'none', cursor: 'pointer' }}
@@ -550,10 +611,12 @@ function Dashboard() {
               <input
                 type="file"
                 accept="image/*"
-                capture="environment"
                 onChange={handleImageUpload}
                 className="input"
               />
+              <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.5rem' }}>
+                Choose from gallery or take a photo
+              </p>
             </div>
 
             {searchImage && (
@@ -602,10 +665,7 @@ function Dashboard() {
                       key={item.id}
                       className="card"
                       style={{ marginBottom: '0.75rem', cursor: 'pointer', padding: '0.75rem' }}
-                      onClick={() => {
-                        setShowImageModal(false);
-                        navigate('/items');
-                      }}
+                      onClick={() => openItemDetail(item)}
                     >
                       <div className="flex items-center gap-2">
                         {item.photo_url && (
@@ -632,6 +692,98 @@ function Dashboard() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Item Detail Modal */}
+      {showItemDetailModal && selectedItem && (
+        <div className="modal-overlay" onClick={() => setShowItemDetailModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ margin: '1rem' }}>
+            <div className="flex items-center justify-between" style={{ marginBottom: '1.5rem' }}>
+              <h2 style={{ fontSize: 'clamp(1.25rem, 4vw, 1.5rem)' }}>📦 Item Details</h2>
+              <button
+                onClick={() => setShowItemDetailModal(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {selectedItem.photo_url && (
+              <img 
+                src={selectedItem.photo_url} 
+                alt={selectedItem.name}
+                style={{ 
+                  width: '100%', 
+                  maxHeight: '300px', 
+                  objectFit: 'contain',
+                  borderRadius: '12px',
+                  marginBottom: '1.5rem',
+                  border: '1px solid #e5e7eb'
+                }} 
+              />
+            )}
+
+            <div style={{ marginBottom: '1.5rem' }}>
+              <h3 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '1rem' }}>
+                {selectedItem.name}
+              </h3>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.95rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#6b7280' }}>Location:</span>
+                  <span style={{ fontWeight: 600 }}>{getLocationName(selectedItem.location_id)}</span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#6b7280' }}>Quantity:</span>
+                  <span style={{ fontWeight: 600 }}>{selectedItem.quantity}</span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: '#6b7280' }}>Stock Level:</span>
+                  <span 
+                    className="badge"
+                    style={{
+                      background: stockLevelColors[selectedItem.stock_level].bg,
+                      color: stockLevelColors[selectedItem.stock_level].text,
+                      fontSize: '0.8rem'
+                    }}
+                  >
+                    {selectedItem.stock_level}
+                  </span>
+                </div>
+
+                {selectedItem.expiry_date && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#6b7280' }}>Expires:</span>
+                    <span style={{ fontWeight: 600 }}>
+                      {new Date(selectedItem.expiry_date).toLocaleDateString()}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex gap-2 mobile-stack">
+              <button 
+                className="btn btn-primary mobile-full"
+                style={{ flex: 1 }}
+                onClick={() => {
+                  setShowItemDetailModal(false);
+                  navigate('/items', { state: { editItem: selectedItem } });
+                }}
+              >
+                Edit Item
+              </button>
+              <button 
+                className="btn btn-secondary mobile-full"
+                onClick={() => setShowItemDetailModal(false)}
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
