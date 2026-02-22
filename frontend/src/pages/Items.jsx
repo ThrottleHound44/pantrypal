@@ -15,6 +15,7 @@ function Items() {
     photo_url: ''
   });
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -40,14 +41,50 @@ function Items() {
     }
   };
 
-  const handlePhotoSelect = (e) => {
-    const file = e.target.files[0];
-    if (file) {
+  const compressImage = (file) => {
+    return new Promise((resolve) => {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData({...formData, photo_url: reader.result});
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 800;
+          const MAX_HEIGHT = 800;
+          
+          let width = img.width;
+          let height = img.height;
+          
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          resolve(canvas.toDataURL('image/jpeg', 0.7));
+        };
+        img.src = e.target.result;
       };
       reader.readAsDataURL(file);
+    });
+  };
+
+  const handlePhotoSelect = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const compressed = await compressImage(file);
+      setFormData({...formData, photo_url: compressed});
     }
   };
 
@@ -79,6 +116,7 @@ function Items() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSaving(true);
     
     try {
       if (editingItem) {
@@ -129,6 +167,8 @@ function Items() {
     } catch (error) {
       console.error('Error saving item:', error);
       alert('Failed to save item. Please try again.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -396,13 +436,21 @@ function Items() {
               </div>
 
               <div className="flex gap-2">
-                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
-                  {editingItem ? 'Update Item' : 'Add Item'}
+                <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={saving}>
+                  {saving ? (
+                    <>
+                      <div className="spinner" style={{ width: '20px', height: '20px' }}></div>
+                      <span>{editingItem ? 'Updating...' : 'Adding...'}</span>
+                    </>
+                  ) : (
+                    <span>{editingItem ? 'Update Item' : 'Add Item'}</span>
+                  )}
                 </button>
                 <button 
                   type="button" 
                   className="btn btn-secondary"
                   onClick={() => setShowModal(false)}
+                  disabled={saving}
                 >
                   Cancel
                 </button>

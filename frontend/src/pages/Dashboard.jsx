@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Package, MapPin, AlertTriangle, ShoppingCart, ChefHat, Camera, Search, X, Eye, Edit } from 'lucide-react';
+import { Package, MapPin, AlertTriangle, ShoppingCart, ChefHat, Camera, Search, X } from 'lucide-react';
 
 function Dashboard() {
   const navigate = useNavigate();
@@ -13,16 +13,23 @@ function Dashboard() {
   const [recentAlerts, setRecentAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // Image search states
-  const [showSearchModal, setShowSearchModal] = useState(false);
-  const [searchImage, setSearchImage] = useState(null);
+  // Search states
+  const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
+  const [showResults, setShowResults] = useState(false);
+  
+  // Image search states
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [searchImage, setSearchImage] = useState(null);
+  const [imageResults, setImageResults] = useState([]);
   const [searching, setSearching] = useState(false);
+  
   const [allItems, setAllItems] = useState([]);
+  const [allLocations, setAllLocations] = useState([]);
 
   useEffect(() => {
     loadDashboard();
-    loadItems();
+    loadData();
   }, []);
 
   const loadDashboard = async () => {
@@ -44,16 +51,47 @@ function Dashboard() {
     }
   };
 
-  const loadItems = async () => {
+  const loadData = async () => {
     try {
-      const res = await fetch('/api/items');
-      const data = await res.json();
-      setAllItems(data);
+      const [itemsRes, locationsRes] = await Promise.all([
+        fetch('/api/items'),
+        fetch('/api/locations')
+      ]);
+      const itemsData = await itemsRes.json();
+      const locationsData = await locationsRes.json();
+      setAllItems(itemsData);
+      setAllLocations(locationsData);
     } catch (error) {
-      console.error('Error loading items:', error);
+      console.error('Error loading data:', error);
     }
   };
 
+  // Text search
+  const handleSearch = (query) => {
+    setSearchQuery(query);
+    
+    if (!query.trim()) {
+      setShowResults(false);
+      return;
+    }
+
+    const lowerQuery = query.toLowerCase();
+    
+    // Search items
+    const matchedItems = allItems.filter(item =>
+      item.name.toLowerCase().includes(lowerQuery)
+    );
+    
+    // Search locations
+    const matchedLocations = allLocations.filter(loc =>
+      loc.name.toLowerCase().includes(lowerQuery)
+    );
+    
+    setSearchResults({ items: matchedItems, locations: matchedLocations });
+    setShowResults(true);
+  };
+
+  // Image search
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -73,21 +111,23 @@ function Dashboard() {
 
     setSearching(true);
     
-    // Simulate AI processing time
     setTimeout(() => {
-      // Simple text matching based on item names
-      // In a real implementation, this would call an AI vision API
-      const query = prompt('What are you looking for in this image? (e.g., milk, eggs, chicken)');
+      const query = prompt('What item are you looking for?');
       
       if (query) {
-        const results = allItems.filter(item => 
+        const results = allItems.filter(item =>
           item.name.toLowerCase().includes(query.toLowerCase())
         );
-        setSearchResults(results);
+        setImageResults(results);
       }
       
       setSearching(false);
-    }, 1500);
+    }, 1000);
+  };
+
+  const getLocationName = (locationId) => {
+    const location = allLocations.find(loc => loc.id === locationId);
+    return location ? location.name : 'Unknown';
   };
 
   const quickActions = [
@@ -127,18 +167,131 @@ function Dashboard() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mobile-stack" style={{ marginBottom: '2rem', gap: '1rem' }}>
-        <div>
-          <h1 style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>Dashboard</h1>
-          <p style={{ color: '#6b7280' }}>Welcome to your smart kitchen management system</p>
+      <div style={{ marginBottom: '2rem' }}>
+        <h1 style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>Dashboard</h1>
+        <p style={{ color: '#6b7280' }}>Welcome to your smart kitchen management system</p>
+      </div>
+
+      {/* Search Bar + Image Search */}
+      <div className="card" style={{ marginBottom: '2rem' }}>
+        <div className="flex items-center gap-2" style={{ position: 'relative' }}>
+          <div style={{ flex: 1, position: 'relative' }}>
+            <input
+              type="text"
+              className="input"
+              placeholder="Search items or locations..."
+              value={searchQuery}
+              onChange={(e) => handleSearch(e.target.value)}
+              style={{ paddingLeft: '2.5rem' }}
+            />
+            <Search 
+              size={20} 
+              style={{ 
+                position: 'absolute', 
+                left: '0.75rem', 
+                top: '50%', 
+                transform: 'translateY(-50%)',
+                color: '#9ca3af'
+              }} 
+            />
+          </div>
+          <button 
+            className="btn btn-primary"
+            onClick={() => setShowImageModal(true)}
+            style={{ whiteSpace: 'nowrap' }}
+          >
+            <Camera size={20} />
+            <span className="mobile-hide">Image Search</span>
+          </button>
         </div>
-        <button 
-          className="btn btn-primary mobile-full"
-          onClick={() => setShowSearchModal(true)}
-        >
-          <Camera size={20} />
-          <span>Image Search</span>
-        </button>
+
+        {/* Search Results Dropdown */}
+        {showResults && (
+          <div style={{
+            marginTop: '1rem',
+            padding: '1rem',
+            background: '#f9fafb',
+            borderRadius: '10px',
+            maxHeight: '400px',
+            overflowY: 'auto'
+          }}>
+            {searchResults.items.length === 0 && searchResults.locations.length === 0 ? (
+              <p style={{ color: '#6b7280', textAlign: 'center' }}>No results found</p>
+            ) : (
+              <>
+                {searchResults.items.length > 0 && (
+                  <div style={{ marginBottom: '1rem' }}>
+                    <h4 style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem', color: '#374151' }}>
+                      Items ({searchResults.items.length})
+                    </h4>
+                    {searchResults.items.map(item => (
+                      <div
+                        key={item.id}
+                        style={{
+                          padding: '0.75rem',
+                          background: 'white',
+                          borderRadius: '8px',
+                          marginBottom: '0.5rem',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.75rem'
+                        }}
+                        onClick={() => {
+                          setShowResults(false);
+                          navigate('/items');
+                        }}
+                      >
+                        {item.photo_url && (
+                          <img 
+                            src={item.photo_url} 
+                            alt={item.name}
+                            style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '6px' }}
+                          />
+                        )}
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 600 }}>{item.name}</div>
+                          <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                            📍 {getLocationName(item.location_id)}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {searchResults.locations.length > 0 && (
+                  <div>
+                    <h4 style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem', color: '#374151' }}>
+                      Locations ({searchResults.locations.length})
+                    </h4>
+                    {searchResults.locations.map(location => (
+                      <div
+                        key={location.id}
+                        style={{
+                          padding: '0.75rem',
+                          background: 'white',
+                          borderRadius: '8px',
+                          marginBottom: '0.5rem',
+                          cursor: 'pointer'
+                        }}
+                        onClick={() => {
+                          setShowResults(false);
+                          navigate('/locations');
+                        }}
+                      >
+                        <div style={{ fontWeight: 600 }}>{location.name}</div>
+                        <div style={{ fontSize: '0.75rem', color: '#6b7280', textTransform: 'capitalize' }}>
+                          {location.location_type}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Stats Grid */}
@@ -252,13 +405,13 @@ function Dashboard() {
       </div>
 
       {/* Image Search Modal */}
-      {showSearchModal && (
-        <div className="modal-overlay" onClick={() => setShowSearchModal(false)}>
+      {showImageModal && (
+        <div className="modal-overlay" onClick={() => setShowImageModal(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
             <div className="flex items-center justify-between" style={{ marginBottom: '1.5rem' }}>
-              <h2 style={{ fontSize: '1.5rem' }}>🔍 AI Image Search</h2>
+              <h2 style={{ fontSize: '1.5rem' }}>📸 Image Search</h2>
               <button
-                onClick={() => setShowSearchModal(false)}
+                onClick={() => setShowImageModal(false)}
                 style={{ background: 'none', border: 'none', cursor: 'pointer' }}
               >
                 <X size={24} />
@@ -269,7 +422,6 @@ function Dashboard() {
               Upload a photo to find items in your inventory
             </p>
 
-            {/* Image Upload */}
             <div style={{ marginBottom: '1.5rem' }}>
               <label className="label">Upload Image</label>
               <input
@@ -281,7 +433,6 @@ function Dashboard() {
               />
             </div>
 
-            {/* Image Preview */}
             {searchImage && (
               <div style={{ marginBottom: '1.5rem' }}>
                 <img 
@@ -298,7 +449,6 @@ function Dashboard() {
               </div>
             )}
 
-            {/* Search Button */}
             <button 
               className="btn btn-primary w-full"
               onClick={searchByImage}
@@ -318,21 +468,20 @@ function Dashboard() {
               )}
             </button>
 
-            {/* Search Results */}
-            {searchResults.length > 0 && (
+            {imageResults.length > 0 && (
               <div>
                 <h3 style={{ fontSize: '1.125rem', marginBottom: '1rem', fontWeight: 600 }}>
-                  Found {searchResults.length} item(s)
+                  Found {imageResults.length} item(s)
                 </h3>
                 <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                  {searchResults.map((item) => (
+                  {imageResults.map((item) => (
                     <div
                       key={item.id}
                       className="card"
                       style={{ marginBottom: '0.75rem', cursor: 'pointer' }}
                       onClick={() => {
-                        setShowSearchModal(false);
-                        navigate('/items', { state: { highlightItem: item.id } });
+                        setShowImageModal(false);
+                        navigate('/items');
                       }}
                     >
                       <div className="flex items-center gap-2">
@@ -351,12 +500,9 @@ function Dashboard() {
                         <div style={{ flex: 1 }}>
                           <h4 style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{item.name}</h4>
                           <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                            Location: {item.location_id} • Qty: {item.quantity}
+                            📍 {getLocationName(item.location_id)} • Qty: {item.quantity}
                           </p>
                         </div>
-                        <button className="btn btn-secondary" style={{ padding: '0.5rem' }}>
-                          <Eye size={18} />
-                        </button>
                       </div>
                     </div>
                   ))}

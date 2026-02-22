@@ -155,6 +155,26 @@ async def get_items():
         items.append(clean_item)
     return items
 
+@app.get("/api/items/location/{location_id}")
+async def get_items_by_location(location_id: str):
+    """Get all items in a specific location"""
+    items = []
+    async for item in db.items.find({"location_id": location_id, "family_id": "default-family"}):
+        clean_item = {
+            "id": item.get("id"),
+            "name": item.get("name"),
+            "location_id": item.get("location_id"),
+            "quantity": item.get("quantity"),
+            "stock_level": item.get("stock_level"),
+            "expiry_date": item.get("expiry_date"),
+            "photo_url": item.get("photo_url"),
+            "family_id": item.get("family_id"),
+            "added_by": item.get("added_by"),
+            "added_date": item.get("added_date")
+        }
+        items.append(clean_item)
+    return items
+
 @app.post("/api/items")
 async def create_item(item: Item):
     item_dict = item.dict()
