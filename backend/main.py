@@ -118,6 +118,23 @@ async def delete_location(location_id: str):
         raise HTTPException(status_code=404, detail="Location not found")
     return {"message": "Location deleted"}
 
+@app.put("/api/locations/{location_id}")
+async def update_location(location_id: str, location: Location):
+    location_dict = location.dict()
+    result = await db.locations.update_one(
+        {"id": location_id},
+        {"$set": {"name": location_dict["name"], "location_type": location_dict["location_type"]}}
+    )
+    if result.modified_count == 0 and result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Location not found")
+    
+    # Return updated location
+    updated_location = await db.locations.find_one({"id": location_id})
+    if updated_location:
+        updated_location['_id'] = str(updated_location['_id'])
+        return updated_location
+    return location_dict
+
 # Items
 @app.get("/api/items")
 async def get_items():
@@ -178,6 +195,23 @@ async def delete_item(item_id: str):
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Item not found")
     return {"message": "Item deleted"}
+
+@app.put("/api/items/{item_id}")
+async def update_item(item_id: str, item: Item):
+    item_dict = item.dict()
+    result = await db.items.update_one(
+        {"id": item_id},
+        {"$set": item_dict}
+    )
+    if result.modified_count == 0 and result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Item not found")
+    
+    # Return updated item
+    updated_item = await db.items.find_one({"id": item_id})
+    if updated_item:
+        updated_item['_id'] = str(updated_item['_id'])
+        return updated_item
+    return item_dict
 
 # Grocery Lists
 @app.get("/api/grocery-lists")

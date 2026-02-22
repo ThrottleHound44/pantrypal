@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Package, MapPin, AlertTriangle, ShoppingCart, ChefHat } from 'lucide-react';
+import { Package, MapPin, AlertTriangle, ShoppingCart, ChefHat, Camera, Search, X, Eye, Edit } from 'lucide-react';
 
 function Dashboard() {
   const navigate = useNavigate();
@@ -12,9 +12,17 @@ function Dashboard() {
   });
   const [recentAlerts, setRecentAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // Image search states
+  const [showSearchModal, setShowSearchModal] = useState(false);
+  const [searchImage, setSearchImage] = useState(null);
+  const [searchResults, setSearchResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [allItems, setAllItems] = useState([]);
 
   useEffect(() => {
     loadDashboard();
+    loadItems();
   }, []);
 
   const loadDashboard = async () => {
@@ -36,24 +44,70 @@ function Dashboard() {
     }
   };
 
+  const loadItems = async () => {
+    try {
+      const res = await fetch('/api/items');
+      const data = await res.json();
+      setAllItems(data);
+    } catch (error) {
+      console.error('Error loading items:', error);
+    }
+  };
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSearchImage(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const searchByImage = async () => {
+    if (!searchImage) {
+      alert('Please upload an image first!');
+      return;
+    }
+
+    setSearching(true);
+    
+    // Simulate AI processing time
+    setTimeout(() => {
+      // Simple text matching based on item names
+      // In a real implementation, this would call an AI vision API
+      const query = prompt('What are you looking for in this image? (e.g., milk, eggs, chicken)');
+      
+      if (query) {
+        const results = allItems.filter(item => 
+          item.name.toLowerCase().includes(query.toLowerCase())
+        );
+        setSearchResults(results);
+      }
+      
+      setSearching(false);
+    }, 1500);
+  };
+
   const quickActions = [
     { 
       title: 'Add Items', 
       icon: Package, 
       path: '/items',
-      color: '#667eea'
+      color: '#10b981'
     },
     { 
       title: 'Locations', 
       icon: MapPin, 
       path: '/locations',
-      color: '#f59e0b'
+      color: '#3b82f6'
     },
     { 
       title: 'Recipes', 
       icon: ChefHat, 
       path: '/recipes',
-      color: '#10b981'
+      color: '#8b5cf6'
     },
     { 
       title: 'Grocery Lists', 
@@ -73,9 +127,18 @@ function Dashboard() {
 
   return (
     <div>
-      <div style={{ marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>Dashboard</h1>
-        <p style={{ color: '#6b7280' }}>Welcome to your smart kitchen management system</p>
+      <div className="flex items-center justify-between mobile-stack" style={{ marginBottom: '2rem', gap: '1rem' }}>
+        <div>
+          <h1 style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>Dashboard</h1>
+          <p style={{ color: '#6b7280' }}>Welcome to your smart kitchen management system</p>
+        </div>
+        <button 
+          className="btn btn-primary mobile-full"
+          onClick={() => setShowSearchModal(true)}
+        >
+          <Camera size={20} />
+          <span>Image Search</span>
+        </button>
       </div>
 
       {/* Stats Grid */}
@@ -187,6 +250,122 @@ function Dashboard() {
           ))}
         </div>
       </div>
+
+      {/* Image Search Modal */}
+      {showSearchModal && (
+        <div className="modal-overlay" onClick={() => setShowSearchModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
+            <div className="flex items-center justify-between" style={{ marginBottom: '1.5rem' }}>
+              <h2 style={{ fontSize: '1.5rem' }}>🔍 AI Image Search</h2>
+              <button
+                onClick={() => setShowSearchModal(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <p style={{ marginBottom: '1.5rem', color: '#6b7280' }}>
+              Upload a photo to find items in your inventory
+            </p>
+
+            {/* Image Upload */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label className="label">Upload Image</label>
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleImageUpload}
+                className="input"
+              />
+            </div>
+
+            {/* Image Preview */}
+            {searchImage && (
+              <div style={{ marginBottom: '1.5rem' }}>
+                <img 
+                  src={searchImage} 
+                  alt="Search" 
+                  style={{ 
+                    width: '100%', 
+                    maxHeight: '300px', 
+                    objectFit: 'contain',
+                    borderRadius: '10px',
+                    border: '1px solid #e5e7eb'
+                  }} 
+                />
+              </div>
+            )}
+
+            {/* Search Button */}
+            <button 
+              className="btn btn-primary w-full"
+              onClick={searchByImage}
+              disabled={!searchImage || searching}
+              style={{ marginBottom: '1.5rem' }}
+            >
+              {searching ? (
+                <>
+                  <div className="spinner" style={{ width: '20px', height: '20px' }}></div>
+                  <span>Searching...</span>
+                </>
+              ) : (
+                <>
+                  <Search size={20} />
+                  <span>Search Items</span>
+                </>
+              )}
+            </button>
+
+            {/* Search Results */}
+            {searchResults.length > 0 && (
+              <div>
+                <h3 style={{ fontSize: '1.125rem', marginBottom: '1rem', fontWeight: 600 }}>
+                  Found {searchResults.length} item(s)
+                </h3>
+                <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                  {searchResults.map((item) => (
+                    <div
+                      key={item.id}
+                      className="card"
+                      style={{ marginBottom: '0.75rem', cursor: 'pointer' }}
+                      onClick={() => {
+                        setShowSearchModal(false);
+                        navigate('/items', { state: { highlightItem: item.id } });
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        {item.photo_url && (
+                          <img 
+                            src={item.photo_url} 
+                            alt={item.name}
+                            style={{ 
+                              width: '60px', 
+                              height: '60px', 
+                              objectFit: 'cover', 
+                              borderRadius: '8px' 
+                            }}
+                          />
+                        )}
+                        <div style={{ flex: 1 }}>
+                          <h4 style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{item.name}</h4>
+                          <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                            Location: {item.location_id} • Qty: {item.quantity}
+                          </p>
+                        </div>
+                        <button className="btn btn-secondary" style={{ padding: '0.5rem' }}>
+                          <Eye size={18} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
